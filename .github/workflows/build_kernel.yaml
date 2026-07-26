@@ -33,7 +33,7 @@ jobs:
       - name: Checkout Modules Source
         uses: actions/checkout@v6
         with:
-          repository: ZYouXPro/realme_GTmaster_Q3s_Q3t_9-5G-Speed-AndroidT-vendor-source
+          repository: realme-kernel-opensource/realme_GTmaster_Q3s_Q3t_9-5G-Speed-AndroidT-vendor-source
           path: temp_modules
           ref: master
 
