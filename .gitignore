@@ -1,0 +1,9 @@
+*.o
+*.ko
+*.a
+*.so
+*.img
+*.bin
+out/
+build/
+*.tmp
