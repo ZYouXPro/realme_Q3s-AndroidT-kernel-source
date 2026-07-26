@@ -1250,6 +1250,55 @@ static ssize_t oplus_chg_intf_batt_voltage_now_cell_show(struct device *dev,
 	return ret;
 }
 
+#define AGING_FFC_DEBUG_DATA_LEN 36
+static ssize_t oplus_chg_intf_batt_aging_ffc_data_show(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	struct oplus_chg_chip *chip = NULL;
+	int ffc1_voltage_offset = 0;
+	int ffc2_voltage_offset = 0;
+
+	chip = oplus_chg_get_chg_struct();
+	if (!chip) {
+		chg_err("chip is NULL\n");
+		return -ENODEV;
+	}
+
+	oplus_chg_get_aging_ffc_offset(chip, &ffc1_voltage_offset, &ffc2_voltage_offset);
+
+	return snprintf(buf, AGING_FFC_DEBUG_DATA_LEN, "%d,%d,%d,%d,%d,%d,%d,%d\n",
+			chip->aging_ffc_version,
+			chip->vbatt_num,
+			chip->debug_batt_cc,
+			chip->batt_cc,
+			chip->limits.default_ffc1_normal_vfloat_sw_limit + ffc1_voltage_offset,
+			chip->limits.default_ffc1_warm_vfloat_sw_limit + ffc1_voltage_offset,
+			chip->limits.default_ffc2_normal_vfloat_sw_limit + ffc2_voltage_offset,
+			chip->limits.default_ffc2_warm_vfloat_sw_limit + ffc2_voltage_offset);
+}
+
+static ssize_t oplus_chg_intf_batt_aging_ffc_data_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = 0;
+	struct oplus_chg_chip *chip = NULL;
+
+	chip = oplus_chg_get_chg_struct();
+	if (!chip) {
+		chg_err("chip is NULL\n");
+		return -ENODEV;
+	}
+
+	if (kstrtos32(buf, 0, &val)) {
+		chg_err("buf error\n");
+		return -EINVAL;
+	}
+
+	chip->debug_batt_cc = val;
+
+	return count;
+}
+
 static enum oplus_chg_mod_property oplus_chg_intf_batt_props[] = {
 	OPLUS_CHG_PROP_STATUS,
 	OPLUS_CHG_PROP_PRESENT,
@@ -1348,6 +1397,7 @@ static enum oplus_chg_mod_property oplus_chg_intf_batt_uevent_props[] = {
 
 static struct oplus_chg_exten_prop oplus_chg_intf_batt_exten_props[] = {
 	OPLUS_CHG_EXTEN_ROATTR(OPLUS_CHG_EXTERN_PROP_VOLTAGE_NOW_CELL, oplus_chg_intf_batt_voltage_now_cell),
+	OPLUS_CHG_EXTEN_RWATTR(OPLUS_CHG_EXTERN_PROP_AGING_FFC_DATA, oplus_chg_intf_batt_aging_ffc_data),
 };
 
 #ifdef CONFIG_OPLUS_CHG_OOS
@@ -1566,10 +1616,10 @@ static int oplus_chg_intf_batt_get_prop(struct oplus_chg_mod *ocm,
 		pval->intval = chip->batt_fcc * 1000;
 		break;
 	case OPLUS_CHG_PROP_TIME_TO_FULL_AVG:
-		pval->intval = 5000;
+		pval->intval = 0;
 		break;
 	case OPLUS_CHG_PROP_TIME_TO_FULL_NOW:
-		pval->intval = 5000;
+		pval->intval = 0;
 		break;
 	case OPLUS_CHG_PROP_TIME_TO_EMPTY_AVG:
 		pval->intval = 5000;
@@ -1888,6 +1938,7 @@ static int oplus_chg_intf_batt_prop_is_writeable(struct oplus_chg_mod *ocm,
 	case OPLUS_CHG_PROP_SHORT_IC_VOLT_THRESH:
 #endif
 #endif /* CONFIG_OPLUS_CHG_OOS */
+	case OPLUS_CHG_EXTERN_PROP_AGING_FFC_DATA:
 		return 1;
 	default:
 		break;

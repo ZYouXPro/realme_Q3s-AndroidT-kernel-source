@@ -217,6 +217,8 @@
 #define WLS_AUTH_AES_ENCODE_LEN		16
 #define WLS_ENCODE_MASK			3
 #define WLS_RECEIVE_POWER_DEFAULT	12000
+#define WLS_RECEIVE_POWER_PD65W		50000
+
 struct wls_auth_result {
 	u8 random_num[WLS_AUTH_RANDOM_LEN];
 	u8 encode_num[WLS_AUTH_ENCODE_LEN];

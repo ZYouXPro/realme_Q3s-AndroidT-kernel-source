@@ -46,18 +46,41 @@ static bool adsp_started;
 static bool online_pending;
 
 static struct wls_base_type wls_base_table[] = {
-	{ 0x00, 30000 },
-	{ 0x01, 40000 },
-	{ 0x02, 50000 },
-	{ 0x03, 50000 },
-	{ 0x1f, 50000 },
+	{ 0x00, 30000 }, { 0x01, 40000 }, { 0x02, 50000 }, { 0x03, 50000 }, { 0x04, 50000 },
+	{ 0x05, 50000 }, { 0x06, 50000 }, { 0x07, 50000 }, { 0x08, 50000 }, { 0x09, 50000 },
+	{ 0x0a, 100000 }, { 0x0b, 100000 }, { 0x10, 100000 }, { 0x11, 100000 }, { 0x12, 100000 },
+	{ 0x13, 100000 }, { 0x1f, 50000 },
 };
 
 static u8 oplus_trx_id_table[] = {
 	0x02, 0x03, 0x04, 0x05, 0x06
 };
 
-static int oplus_chg_wls_pwr_table[] = {0, 12000, 12000, 35000, 50000};
+/*static int oplus_chg_wls_pwr_table[] = {0, 12000, 12000, 35000, 50000};*/
+static struct wls_pwr_table oplus_chg_wls_pwr_table[] = {/*(f2_id, r_power, t_power)*/
+	{ 0x00, 12, 15 }, { 0x01, 12, 20 }, { 0x02, 12, 30 }, { 0x03, 35, 50 }, { 0x04, 45, 65 },
+	{ 0x05, 50, 75 }, { 0x06, 60, 85 }, { 0x07, 65, 95 }, { 0x08, 75, 105 }, { 0x09, 80, 115 },
+	{ 0x0A, 90, 125 }, { 0x0B, 20, 20 }, { 0x0C, 100, 140 }, { 0x0D, 115, 160 }, { 0x0E, 130, 180 },
+	{ 0x0F, 145, 200 },
+	{ 0x11, 35, 50 }, { 0x12, 35, 50 }, { 0x13, 12, 20 }, { 0x14, 45, 65 }, { 0x15, 12, 20 },
+	{ 0x16, 12, 20 }, { 0x17, 12, 30 }, { 0x18, 12, 30 }, { 0x19, 12, 30 }, { 0x1A, 12, 33 },
+	{ 0x1B, 12, 33 }, { 0x1C, 12, 44 }, { 0x1D, 12, 44 }, { 0x1E, 12, 44 },
+	{ 0x21, 35, 50 }, { 0x22, 12, 44 }, { 0x23, 35, 50 }, { 0x24, 35, 55 }, { 0x25, 35, 55 },
+	{ 0x26, 35, 55 }, { 0x27, 35, 55 }, { 0x28, 45, 65 }, { 0x29, 12, 30 }, { 0x2A, 45, 65 },
+	{ 0x2B, 45, 66 }, { 0x2C, 45, 67 }, { 0x2D, 45, 67 }, { 0x2E, 45, 67 },
+	{ 0x31, 35, 50 }, { 0x32, 90, 120 }, { 0x33, 35, 50 }, { 0x34, 12, 20 }, { 0x35, 45, 65 },
+	{ 0x36, 45, 66 }, { 0x37, 50, 88 }, { 0x38, 50, 88 }, { 0x39, 50, 88 }, { 0x3A, 50, 88 },
+	{ 0x3B, 75, 100 }, { 0x3C, 75, 100 }, { 0x3D, 75, 100 }, { 0x3E, 75, 100 },
+	{ 0x41, 12, 30 }, { 0x42, 12, 30 }, { 0x43, 12, 30 }, { 0x44, 12, 30 }, { 0x45, 12, 30 },
+	{ 0x46, 12, 30 }, { 0x47, 90, 120 }, { 0x48, 90, 120 }, { 0x49, 12, 33 }, { 0x4A, 12, 33 },
+	{ 0x4B, 50, 80 }, { 0x4C, 50, 80 }, { 0x4D, 50, 80 }, { 0x4E, 50, 80 },
+	{ 0x51, 90, 125 },
+	{ 0x61, 12, 33 }, { 0x62, 35, 50 }, { 0x63, 45, 65 }, { 0x64, 45, 66 }, { 0x65, 50, 80 },
+	{ 0x66, 45, 65 }, { 0x67, 90, 125 }, { 0x68, 90, 125 }, { 0x69, 75, 100 }, { 0x6A, 75, 100 },
+	{ 0x6B, 90, 120 }, { 0x6C, 45, 67 }, { 0x6D, 45, 67 }, { 0x6E, 45, 65 },
+	{ 0x7F, 30, 0 },
+};
+
 static struct wls_pwr_table oplus_chg_wls_tripartite_pwr_table[] = {
 	{0x01, 20, 20}, {0x02, 30, 30}, {0x03, 40, 40},  {0x04, 50, 50},
 };
@@ -212,6 +235,23 @@ static int oplus_chg_wls_get_base_power_max(u8 id)
 	}
 
 	return pwr;
+}
+
+static int oplus_chg_wls_get_r_power(struct oplus_chg_wls *wls_dev, u8 f2_data)
+{
+	int i = 0;
+	int r_pwr = WLS_RECEIVE_POWER_DEFAULT;
+	struct oplus_chg_wls_status *wls_status = &wls_dev->wls_status;
+
+	for (i = 0; i < ARRAY_SIZE(oplus_chg_wls_pwr_table); i++) {
+		if (oplus_chg_wls_pwr_table[i].f2_id == (f2_data & 0x7F)) {
+			r_pwr = oplus_chg_wls_pwr_table[i].r_power * 1000;
+			break;
+		}
+	}
+	if (wls_status->wls_type == OPLUS_CHG_WLS_PD_65W)
+		return WLS_RECEIVE_POWER_PD65W;
+	return r_pwr;
 }
 
 static int oplus_chg_wls_get_tripartite_r_power(u8 f2_data)
@@ -675,7 +715,7 @@ static void oplus_chg_wls_standard_msg_handler(struct oplus_chg_wls *wls_dev,
 				if (wls_status->adapter_power >= ARRAY_SIZE(oplus_chg_wls_pwr_table))
 					wls_status->pwr_max_mw = 0;
 				else
-					wls_status->pwr_max_mw = oplus_chg_wls_pwr_table[wls_status->adapter_power];
+					wls_status->pwr_max_mw = oplus_chg_wls_get_r_power(wls_dev, wls_status->adapter_power);
 				} else {
 					wls_status->pwr_max_mw = oplus_chg_wls_get_tripartite_r_power(wls_status->adapter_power);
 				}
@@ -2403,6 +2443,7 @@ static int oplus_chg_wls_get_max_wireless_power(struct oplus_chg_wls *wls_dev)
 	struct oplus_chg_wls_status *wls_status = &wls_dev->wls_status;
 
 	max_adapter_wls_power = oplus_chg_wls_get_base_power_max(wls_status->adapter_id);
+	max_r_wls_power = oplus_chg_wls_get_r_power(wls_dev, wls_status->adapter_power);
 	max_r_wls_power = max_adapter_wls_power > wls_status->pwr_max_mw ?
 						wls_status->pwr_max_mw : max_adapter_wls_power;
 	max_wls_power = max_r_wls_power > wls_dev->wls_power_mw ?
