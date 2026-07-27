@@ -22,6 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y kmod cpio binutils cmake binutils-aarch64-linux-gnu git wget pahole automake flex lzop bison gperf build-essential zip curl zlib1g-dev libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip dwarves device-tree-compiler python3 ccache git-lfs gnupg imagemagick libelf-dev libncurses5-dev libsdl1.2-dev gpart fuse2fs e2fsck-static icu-doc rsync adb fastboot libstdc++6 python-is-python3 gcc-aarch64-linux-gnu 
           mkdir -p kernel
+
       - name: Checkout Kernel Source
         uses: actions/checkout@v6
         with:
@@ -41,20 +42,36 @@ jobs:
         run: |
           mkdir -p compiler
           cd compiler
-          
           curl -fL "https://github.com/Rancemxn/android_kernel_oppo_sm7325/releases/download/BuildTool/linux-x86-refs_heads_llvm-r383902b-clang-r383902.tar.gz" -o clang-r383902.tar.gz --connect-timeout 30 --retry 5 --retry-delay 5
           mkdir -p clang-bin
           tar -xzf clang-r383902.tar.gz -C clang-bin
           rm clang-r383902.tar.gz
+
       - name: Handle Dependencies
         run: |
           mv temp_modules/vendor ./vendor
           rm -rf temp_modules
+
       - name: Set Release Info & Custom Version
         run: |
           BUILD_DATE=$(date +%Y%m%d)
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
-          
+
+      # ---- 新增：修复 techpack 中的软链接 ----
+      - name: Fix missing symlinks in techpack
+        run: |
+          cd kernel/msm-5.4
+          # 删除可能存在的普通文件或损坏的链接
+          rm -f techpack/audio/soc/core.h
+          rm -f techpack/audio/soc/pinctrl-utils.h
+          rm -f techpack/audio/include/soc/internal.h
+          # 使用绝对路径创建软链接（避免相对路径计算错误）
+          ln -sf "$(pwd)/drivers/pinctrl/core.h" techpack/audio/soc/core.h
+          ln -sf "$(pwd)/drivers/pinctrl/pinctrl-utils.h" techpack/audio/soc/pinctrl-utils.h
+          ln -sf "$(pwd)/drivers/base/regmap/internal.h" techpack/audio/include/soc/internal.h
+          # 验证链接
+          ls -l techpack/audio/soc/core.h techpack/audio/soc/pinctrl-utils.h techpack/audio/include/soc/internal.h
+
       - name: Compile Kernel
         run: |
           export PATH="$(pwd)/compiler/clang-bin/bin:$PATH"
@@ -67,15 +84,14 @@ jobs:
           cd kernel/msm-5.4
           make O=out CC="clang" LLVM=1 vendor/lahaina-qgki_defconfig
           make O=out CC="clang" LLVM=1 -j$(nproc)
+
       - name: Package with AnyKernel3
         run: |
           git clone https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           sed -i '584s|ui_print " " "Done!";|ui_print " "; ui_print "感谢支持ZYOUX内核，刷入完成！"; ui_print "祝你玩的愉快！";|' AnyKernel3/META-INF/com/google/android/update-binary
-          
           cp kernel/msm-5.4/out/arch/arm64/boot/Image AnyKernel3/
           mkdir -p AnyKernel3/modules/vendor/lib/modules
           find kernel/msm-5.4/out/ -name "*.ko" -exec cp {} AnyKernel3/modules/vendor/lib/modules/ \;
-          
           cd AnyKernel3
           rm anykernel.sh
           wget https://github.com/miaizhe/Kernel_oppo_sm7325_Reno10/releases/download/boot/anykernel.sh
@@ -99,13 +115,13 @@ jobs:
           pwd
           cd ..
           pwd
-          
+
       - name: Upload Flashable Kernel
         uses: actions/upload-artifact@v6
         with:
           name: ReSukiSU_Q3s_Flashable
           path: |
-            ReSukiSU-Q3s-Kernel.zip
+            ReSukiSU-Q3s-Kernel.zip   # 注意：这里文件名与前面打包的不一致，如需修正可改为 Q3s-${{ env.BUILD_DATE }}.zip
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
@@ -119,7 +135,7 @@ jobs:
             - 欢迎刷入ZYOUX的内核！祝你玩的愉快！
             - 文件：分为带SuSFS的和不带SukiSU的，zip为ak3包，img文件为打包好的镜像，Docker为带Docker的
           files: |
-              Q3s-${{ env.BUILD_DATE }}.zip
-              boot-Q3s-${{ env.BUILD_DATE }}.img
+            Q3s-${{ env.BUILD_DATE }}.zip
+            boot-Q3s-${{ env.BUILD_DATE }}.img
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
