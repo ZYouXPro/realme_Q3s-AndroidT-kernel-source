@@ -1,1 +1,1 @@
-#include <linux/pinctrl/pinctrl.h>
+../../../drivers/pinctrl/core.h
