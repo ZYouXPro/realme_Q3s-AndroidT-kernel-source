@@ -1,1 +1,1 @@
-#include "../../../drivers/pinctrl/pinctrl-utils.h"
+../../../drivers/pinctrl/pinctrl-utils.h
