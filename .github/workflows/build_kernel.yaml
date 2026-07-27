@@ -11,6 +11,8 @@ jobs:
   build:
     name: Compile Kernel
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # 赋予创建 Release 的权限
 
     steps:
       - name: Configure Fast APT Mirror
@@ -57,19 +59,15 @@ jobs:
           BUILD_DATE=$(date +%Y%m%d)
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
 
-      # ---- 新增：修复 techpack 中的软链接 ----
       - name: Fix missing symlinks in techpack
         run: |
           cd kernel/msm-5.4
-          # 删除可能存在的普通文件或损坏的链接
           rm -f techpack/audio/soc/core.h
           rm -f techpack/audio/soc/pinctrl-utils.h
           rm -f techpack/audio/include/soc/internal.h
-          # 使用绝对路径创建软链接（避免相对路径计算错误）
           ln -sf "$(pwd)/drivers/pinctrl/core.h" techpack/audio/soc/core.h
           ln -sf "$(pwd)/drivers/pinctrl/pinctrl-utils.h" techpack/audio/soc/pinctrl-utils.h
           ln -sf "$(pwd)/drivers/base/regmap/internal.h" techpack/audio/include/soc/internal.h
-          # 验证链接
           ls -l techpack/audio/soc/core.h techpack/audio/soc/pinctrl-utils.h techpack/audio/include/soc/internal.h
 
       - name: Compile Kernel
